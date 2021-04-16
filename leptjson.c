@@ -3,7 +3,12 @@
 #include <assert.h> /* assert() */
 #include <errno.h>  /* errno, ERANGE */
 #include <math.h>   /* HUGE_VAL */
-#include <stdlib.h> /* NULL, strtod() */
+#include <stdlib.h> /* NULL, malloc(), realloc(), free(), strtod() */
+#include <string.h> /* memcpy() */
+
+#ifndef LEPT_PARSE_STACK_INIT_SIZE
+#define LEPT_PARSE_STACK_INIT_SIZE 256
+#endif
 
 #define EXPECT(c, ch)             \
     do {                          \
@@ -16,7 +21,28 @@
 
 typedef struct {
     const char* json;
+    char* stack;
+    size_t size, top;
 } lept_context;
+
+static void* lept_context_push(lept_context* c, size_t size) {
+    void* ret;
+    assert(size > 0);
+    if (c->top + size >= c->size) {
+        if (c->size == 0) c->size = LEPT_PARSE_STACK_INIT_SIZE;
+        while (c->top + size >= c->size)
+            c->size += c->size >> 1; /* c->size * 1.5 */
+        c->stack = (char*)realloc(c->stack, c->size);
+    }
+    ret = c->stack + c->top;
+    c->top += size;
+    return ret;
+}
+
+static void* lept_context_pop(lept_context* c, size_t size) {
+    assert(c->top >= size);
+    return c->stack + (c->top -= size);
+}
 
 static void lept_parse_whitespace(lept_context* c) {
     const char* p = c->json;
@@ -57,8 +83,8 @@ static int lept_parse_number(lept_context* c, lept_value* v) {
         while (ISDIGIT(*p)) ++p;
     }
     errno = 0;
-    v->n = strtod(c->json, NULL);
-    if (errno == ERANGE && (v->n == HUGE_VAL || v->n == -HUGE_VAL))
+    v->u.n = strtod(c->json, NULL);
+    if (errno == ERANGE && (v->u.n == HUGE_VAL || v->u.n == -HUGE_VAL))
         return LEPT_PARSE_NUMBER_TOO_BIG;
     v->type = LEPT_NUMBER;
     c->json = p;
@@ -85,7 +111,9 @@ int lept_parse(lept_value* v, const char* json) {
     lept_context c;
     assert(v != NULL);
     c.json = json;
-    v->type = LEPT_NULL;
+    c.stack = NULL;
+    c.size = c.top = 0;
+    lept_init(v);
     lept_parse_whitespace(&c);
     if ((ret = lept_parse_value(&c, v)) == LEPT_PARSE_OK) {
         lept_parse_whitespace(&c);
@@ -94,7 +122,15 @@ int lept_parse(lept_value* v, const char* json) {
             ret = LEPT_PARSE_ROOT_NOT_SINGULAR;
         }
     }
+    assert(c.top == 0);
+    free(c.stack);
     return ret;
+}
+
+void lept_free(lept_value* v) {
+    assert(v != NULL);
+    if (v->type == LEPT_STRING) free(v->u.s.s);
+    v->type = LEPT_NULL;
 }
 
 lept_type lept_get_type(const lept_value* v) {
@@ -104,5 +140,15 @@ lept_type lept_get_type(const lept_value* v) {
 
 double lept_get_number(const lept_value* v) {
     assert(v != NULL && v->type == LEPT_NUMBER);
-    return v->n;
+    return v->u.n;
+}
+
+void lept_set_string(lept_value* v, const char* s, size_t len) {
+    assert(v != NULL && (s != NULL || len == 0));
+    lept_free(v);
+    v->u.s.s = (char*)malloc(len + 1);
+    memcpy(v->u.s.s, s, len);
+    v->u.s.s[len] = '\0';
+    v->u.s.len = len;
+    v->type = LEPT_STRING;
 }
