@@ -19,6 +19,11 @@
 #define ISDIGIT(ch) ((ch) >= '0' && (ch) <= '9')
 #define ISDIGIT1TO9(ch) ((ch) >= '1' && (ch) <= '9')
 
+#define PUTC(c, ch)                                        \
+    do {                                                   \
+        *(char*)lept_context_push(c, sizeof(char)) = (ch); \
+    } while (0)
+
 typedef struct {
     const char* json;
     char* stack;
@@ -89,6 +94,28 @@ static int lept_parse_number(lept_context* c, lept_value* v) {
     v->type = LEPT_NUMBER;
     c->json = p;
     return LEPT_PARSE_OK;
+}
+
+static int lept_parse_string(lept_context* c, lept_value* v) {
+    size_t head = c->top, len;
+    const char* p;
+    EXPECT(c, '\"');
+    p = c->json;
+    for (;;) {
+        char ch = *p++;
+        switch (ch) {
+            case '\"':
+                len = c->top - head;
+                lept_set_string(v, (const char*)lept_context_pop(c, len), len);
+                c->json = p;
+                return LEPT_PARSE_OK;
+            case '\0':
+                c->top = head;
+                return LEPT_PARSE_MISS_QUOTATION_MARK;
+            default:
+                PUTC(c, ch);
+        }
+    }
 }
 
 static int lept_parse_value(lept_context* c, lept_value* v) {
