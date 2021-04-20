@@ -18,7 +18,7 @@ typedef struct {
         struct {
             char* s;
             size_t len;
-        } s;      /* string */
+        } s;      /* string: null-terminated string, string length */
         double n; /* number */
     } u;
     lept_type type;
@@ -30,7 +30,9 @@ enum {
     LEPT_PARSE_INVALID_VALUE,
     LEPT_PARSE_ROOT_NOT_SINGULAR,
     LEPT_PARSE_NUMBER_TOO_BIG,
-    LEPT_PARSE_MISS_QUOTATION_MARK
+    LEPT_PARSE_MISS_QUOTATION_MARK,
+    LEPT_PARSE_INVALID_STRING_ESCAPE,
+    LEPT_PARSE_INVALID_STRING_CHAR
 };
 
 #define lept_init(v)           \
