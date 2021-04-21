@@ -97,7 +97,21 @@ static int lept_parse_number(lept_context* c, lept_value* v) {
 }
 
 static const char* lept_parse_hex4(const char* p, unsigned* u) {
-    /* \TODO */
+    int i;
+    *u = 0;
+    for (i = 0; i < 4; ++i) {
+        char ch = *p++;
+        *u <<= 4;
+        if (ch >= '0' && ch <= '9') {
+            *u |= ch - '0';
+        } else if (ch >= 'A' && ch <= 'F') {
+            *u |= ch - ('A' - 10);
+        } else if (ch >= 'a' && ch <= 'f') {
+            *u |= ch - ('a' - 10);
+        } else {
+            return NULL;
+        }
+    }
     return p;
 }
 
