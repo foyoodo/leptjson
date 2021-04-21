@@ -116,7 +116,22 @@ static const char* lept_parse_hex4(const char* p, unsigned* u) {
 }
 
 static void lept_encode_utf8(lept_context* c, unsigned u) {
-    /* \TODO */
+    if (u <= 0x7F) {
+        PUTC(c, u & 0x7F);
+    } else if (u <= 0x7FF) {
+        PUTC(c, 0xC0 | (u >> 6) & 0xFF);
+        PUTC(c, 0x80 | (u & 0x3F));
+    } else if (u <= 0xFFFF) {
+        PUTC(c, 0xE0 | ((u >> 12) & 0xFF));
+        PUTC(c, 0x80 | ((u >> 6) & 0x3F));
+        PUTC(c, 0x80 | (u & 0x3F));
+    } else {
+        assert(u <= 0x10FFFF);
+        PUTC(c, 0xF0 | ((u >> 18) & 0xFF));
+        PUTC(c, 0x80 | ((u >> 12) & 0x3F));
+        PUTC(c, 0x80 | ((u >> 6) & 0x3F));
+        PUTC(c, 0x80 | (u & 0x3F));
+    }
 }
 
 #define STRING_ERROR(ret) \
