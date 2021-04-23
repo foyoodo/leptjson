@@ -235,8 +235,10 @@ static int lept_parse_array(lept_context* c, lept_value* v) {
         memcpy(lept_context_push(c, sizeof(lept_value)), &e,
                sizeof(lept_value));
         size++;
+        lept_parse_whitespace(c);
         if (*c->json == ',') {
             c->json++;
+            lept_parse_whitespace(c);
         } else if (*c->json == ']') {
             c->json++;
             v->type = LEPT_ARRAY;
