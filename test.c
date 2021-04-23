@@ -35,6 +35,14 @@ static int test_pass = 0;
 #define EXPECT_FALSE(actual) \
     EXPECT_EQ_BASE((actual) == 0, "false", "true", "%s")
 
+#if defined(_MSC_VER)
+#define EXPECT_EQ_SIZE_T(expect, actual) \
+    EXPECT_EQ_BASE((expect) == (actual), (size_t)expect, (size_t)actual, "%Iu")
+#else
+#define EXPECT_EQ_SIZE_T(expect, actual) \
+    EXPECT_EQ_BASE((expect) == (actual), (size_t)expect, (size_t)actual, "%zu")
+#endif
+
 static void test_parse_null() {
     lept_value v;
     lept_init(&v);
@@ -136,6 +144,15 @@ static void test_parse_string() {
                 "\"\\ud834\\udd1e\""); /* G clef sign U+1D11E */
 }
 
+static void test_parse_array() {
+    lept_value v;
+    lept_init(&v);
+    EXPECT_EQ_INT(LEPT_PARSE_OK, lept_parse(&v, "[ ]"));
+    EXPECT_EQ_INT(LEPT_ARRAY, lept_get_type(&v));
+    EXPECT_EQ_SIZE_T(0, lept_get_array_size(&v));
+    lept_free(&v);
+}
+
 #define TEST_ERROR(error, json)                      \
     do {                                             \
         lept_value v;                                \
@@ -231,6 +248,7 @@ static void test_parse() {
     test_parse_false();
     test_parse_number();
     test_parse_string();
+    test_parse_array();
     test_parse_expect_value();
     test_parse_invalid_value();
     test_parse_root_not_singular();
